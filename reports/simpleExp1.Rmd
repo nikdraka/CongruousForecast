@@ -1,0 +1,44 @@
+---
+title: "Congruous Forecasts: Simple Experiments"
+author: "Kandrika Pritularga"
+date: "2023-05-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Abstract
+Forecasts of future demand are necessary for inventory management. Typically, the focus is on producing accurate forecasts, which are desirable in the statistical sense. On the other hand, the limited work that looks jointly at forecasting and inventory control has identified low out-of-sample bias to be more important than accuracy. Shrinkage estimators and forecast combination shift the attention from in-sample fit to better generalization in the future. These result in less volatile forecasts, with typically better predictive distributions, specifically at quantiles of interest, and less out-of-sample bias. Moreover, companies often prefer forecasts that may be suboptimal in the statistical sense, but change less across time periods, putting less strain in production planning and inventory management, even though this may harm accuracy, attempting to minimize total costs. Arguably this increased congruous forecasts across time periods points to a different objective than accuracy. This is also reflected in recent views on forecast evaluation, where metrics closer to the relevant decision making are seen as desirable, albeit difficult to operationalize, and has been speculated to relate to the trustworthiness of forecasts.
+
+In this work we investigate the impact of increased congruous forecasts across time periods in terms of forecasting, and supported decisions, such as inventory management. We do this by employing a variety of approaches that can decrease the volatility of forecasts across origins: shrinkage and M-estimators, and forecast combination. We simulate the inventory position of a company, investigating the connection between the incurred costs, forecast congruity, bias, and accuracy. Our objective is to characterize the trade-off, to support better specification of forecasting models in the application context, while potentially avoiding relying on difficult to operationalize performance metrics.
+
+# Scenario
+
+Forecasting-related setups
+
+- DGP: AR(1) with $\alpha=0.7$, and $\varepsilon_{t} \sim N(0,1)$.
+- Model: ETS with MSE, ETS with shrinkage, ETS with MAE
+- Accuracy measures: AME, MSE, Pinball at the specific CSL
+
+Inventory setups
+
+- Policy: Order-up-to policy
+- Review: 3 days
+- Lead time: 2 days
+- CSL: 0.9
+
+# Congruent quantile forecasts
+
+## Empirical evidence
+Empirical distribution of S
+
+## Empirical definition
+Do we need to provide a mathematical definition? Probably something like the summary statistics of an empirical distribution are smaller than the other distribution
+
+# Impacts of congruent forecasts on the OUT policy
+
+- a better estimate of S?
+- less costly?
+- higher service level?
