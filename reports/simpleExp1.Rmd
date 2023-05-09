@@ -1,29 +1,40 @@
 ---
 title: "Congruous Forecasts: Simple Experiments"
-author: "Kandrika Pritularga"
+author: "Kandrika Pritularga and Nikos Kourentzes"
 date: "2023-05-08"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+load("SumFcst.RData")
+load("InvSim_ETSmse_CSL90.RData")
+load("InvSim_ETSmae_CSL90.RData")
+load("InvSim_ETSshr_CSL90.RData")
+load("InvSim_ARIMA_CSL90.RData")
 ```
 
 # Abstract
 Forecasts of future demand are necessary for inventory management. Typically, the focus is on producing accurate forecasts, which are desirable in the statistical sense. On the other hand, the limited work that looks jointly at forecasting and inventory control has identified low out-of-sample bias to be more important than accuracy. Shrinkage estimators and forecast combination shift the attention from in-sample fit to better generalization in the future. These result in less volatile forecasts, with typically better predictive distributions, specifically at quantiles of interest, and less out-of-sample bias. Moreover, companies often prefer forecasts that may be suboptimal in the statistical sense, but change less across time periods, putting less strain in production planning and inventory management, even though this may harm accuracy, attempting to minimize total costs. Arguably this increased congruous forecasts across time periods points to a different objective than accuracy. This is also reflected in recent views on forecast evaluation, where metrics closer to the relevant decision making are seen as desirable, albeit difficult to operationalize, and has been speculated to relate to the trustworthiness of forecasts.
 
-In this work we investigate the impact of increased congruous forecasts across time periods in terms of forecasting, and supported decisions, such as inventory management. We do this by employing a variety of approaches that can decrease the volatility of forecasts across origins: shrinkage and M-estimators, and forecast combination. We simulate the inventory position of a company, investigating the connection between the incurred costs, forecast congruity, bias, and accuracy. Our objective is to characterize the trade-off, to support better specification of forecasting models in the application context, while potentially avoiding relying on difficult to operationalize performance metrics.
+In this work we investigate the impact of increased congruous forecasts across time periods in terms of forecasting, and supported decisions, such as inventory management. We do this by employing a variety of approaches that can decrease the volatility of forecasts across origins: shrinkage and M-estimators, and forecast combination. We simulate the inventory position of a company, investigating the connection between the **incurred costs**, **forecast congruity**, **forecast bias**, and **forecast accuracy**. Our objective is to characterize the trade-off, to support better specification of forecasting models in the application context, while potentially avoiding relying on difficult to operationalize performance metrics.
+
+# Purposes
+
+- Evidence the distribution of quantile forecasts
+- Demonstrate the effects of different estimators for each forecasting model to the inventory decision metrics
 
 # Scenario
 
 Forecasting-related setups
 
 - DGP: AR(1) with $\alpha=0.7$, and $\varepsilon_{t} \sim N(0,1)$.
-- Model: ETS with MSE, ETS with shrinkage, ETS with MAE
-- Accuracy measures: AME, MSE, Pinball at the specific CSL
+- Model: ETS with MSE, ETS with MAE, ETS with ridge loss function and $\lambda=0.3$, and automatic ARIMA
+- Accuracy measures: AME, MSE, Pinball at the specific CSL, |cSE|
 
 Inventory setups
 
+- Retail setting: holding cost and cost related to unmet demand (unmet demand cost)
 - Policy: Order-up-to policy
 - Review: 3 days
 - Lead time: 2 days
@@ -31,14 +42,250 @@ Inventory setups
 
 # Congruent quantile forecasts
 
+## Experiments
+
+- Training set: 50
+- Test set: 250
+- Forecast horizon: R = 3, L = 2, H = L+R=5
+- Origins: Test set/ Forecast horizon = 50, the sample size increases by 5 observations when moving to the next origin
+- Calculate sum of the 95% ***empirical*** quantile forecasts for each origin for each model
+- Repetition: 500
+
 ## Empirical evidence
-Empirical distribution of S
+
+I collect the sum of 95% quantile forecasts across origins from 500 repetitions, to demonstrate the safety stock of each origin, for each model. The results show that for ETS-SHR the distribution of the forecasts is concentrated around its location, compared to the other models (leptokurtic distribution). 
+
+```{r, echo=FALSE}
+hist(c(sapply(SumFcst, function(x) x[,1])), breaks = 100, xlim = c(300, 1200), ylim = c(0, 8000),
+     main = "ETS-MSE", xlab = "Sum of 95% Quantile Forecasts across horizons")
+hist(c(sapply(SumFcst, function(x) x[,2])), breaks = 100, xlim = c(300, 1200), ylim = c(0, 8000),
+     main = "ETS-MAE", xlab = "Sum of 95% Quantile Forecasts across horizons")
+hist(c(sapply(SumFcst, function(x) x[,3])), breaks = 100, xlim = c(300, 1200), ylim = c(0, 8000),
+     main = "ETS-SHR", xlab = "Sum of 95% Quantile Forecasts across horizons")
+hist(c(sapply(SumFcst, function(x) x[,4])), breaks = 100, xlim = c(300, 1200), ylim = c(0, 8000),
+     main = "AutoARIMA", xlab = "Sum of 95% Quantile Forecasts across horizons")
+```
+
+I believe we can infer something from this, at least a starting point to define ***congruent forecasts***. Congruent forecasts are characterised by its distribution (?) In other words, how can we tell forecasts are congruent?
+
+Then, it might potentially affect the inventory performance, as this affects the estimation of the safety stock. We can see from the summary statistics that ETS-SHR results in a lower mean and standard deviation, as demonstrated from the histogram.
+```{r, echo=FALSE}
+print(matrix(c(mean(sapply(SumFcst, function(x) x[,1])), sd(sapply(SumFcst, function(x) x[,1])),
+               mean(sapply(SumFcst, function(x) x[,2])), sd(sapply(SumFcst, function(x) x[,2])),
+               mean(sapply(SumFcst, function(x) x[,3])), sd(sapply(SumFcst, function(x) x[,3])),
+               mean(sapply(SumFcst, function(x) x[,4])), sd(sapply(SumFcst, function(x) x[,4]))),
+             ncol = 2, byrow = TRUE,
+             dimnames = list(c("ETS-MSE", "ETS-MAE", "ETS-SHR", "AutoARIMA"),c("Mean", "SD"))))
+```
 
 ## Empirical definition
-Do we need to provide a mathematical definition? Probably something like the summary statistics of an empirical distribution are smaller than the other distribution
+***Question***: Do we need to provide a mathematical definition?
 
 # Impacts of congruent forecasts on the OUT policy
 
-- a better estimate of S?
-- less costly?
-- higher service level?
+## Forecast accuracy
+```{r, echo=FALSE}
+matrix(c(rowMeans(sapply(InvSim_ETSmse_CSL90, function(x) x$accuracy)),
+         rowMeans(sapply(InvSim_ETSmae_CSL90, function(x) x$accuracy)),
+         rowMeans(sapply(InvSim_ETSshr_CSL90, function(x) x$accuracy)),
+         rowMeans(sapply(InvSim_ARIMA_CSL90, function(x) x$accuracy))),
+       ncol = 4, byrow = TRUE,
+       dimnames = list(c("ETS-MSE", "ETS-MAE", "ETS-SHR", "ARIMA"), c("AME", "RMSE", "PinballUp", "|sCE|")))
+```
+
+- ETS-SHR seems to outperform the other models, for all error measures (more accurate, less biased error)
+- I may need to measure the cumulative quantile forecast errors (CumRMSE)
+
+## Service level
+```{r, echo=FALSE}
+InvSim_metric_CSL90 <- matrix(c(rowMeans(sapply(InvSim_ETSmse_CSL90, function(x) x$metric)),
+                                rowMeans(sapply(InvSim_ETSmae_CSL90, function(x) x$metric)),
+                                rowMeans(sapply(InvSim_ETSshr_CSL90, function(x) x$metric)),
+                                rowMeans(sapply(InvSim_ARIMA_CSL90, function(x) x$metric))),
+                              ncol = 3, byrow = TRUE, dimnames = list(c("ETS-MSE", "ETS-MAE", "ETS-SHR", "ARIMA"), 
+                                                                      c("CSL", "EmpCSL1", "EmpCSL2")))
+print(round(InvSim_metric_CSL90*100, 2))
+```
+
+Note: I used Nikos' metrics: `{r} c(csl, 1 - mean(kPad), 1 - sum(simDat[51:250,"StockOnHnd"]==0)/(n-1))`
+
+- The empirical service level seems to overshoot the setup (90%)
+- ETS-SHR has the highest service level among others, even though the difference is small
+
+## Stock on Hand
+```{r, echo=FALSE}
+InvSim_StockOnHnd_CSL90 <- cbind(colMeans(t(sapply(InvSim_ETSmse_CSL90, function(x) x$inventory[,"StockOnHnd"]))),
+                                 colMeans(t(sapply(InvSim_ETSmae_CSL90, function(x) x$inventory[,"StockOnHnd"]))),
+                                 colMeans(t(sapply(InvSim_ETSshr_CSL90, function(x) x$inventory[,"StockOnHnd"]))),
+                                 colMeans(t(sapply(InvSim_ARIMA_CSL90, function(x) x$inventory[,"StockOnHnd"]))))
+
+boxplot(InvSim_StockOnHnd_CSL90, col = "white", names = c("ETS-MSE", "ETS-MAE", "ETS-SHR", "ARIMA"), las = 2,
+        main = "Stock on hand")
+lines(colMeans(InvSim_StockOnHnd_CSL90), type = "o", col = "red", pch = 20, cex = 1.5)
+```
+
+## Summary?
+
+- ETS-SHR outperforms the other models, even though, insignificantly
+- The choice of $\lambda$ is still arbitrary, I did not do any optimisation on $\lambda$
+- ETS-SHR results in lower stock on hand and higher fill rates, meaning lower costs, but insignificantly
+- The connection between accuracy and inventory decisions is not really clear yet, we need to expand the experimental settings
+- Do you have any comments or feedback? I am still confused myself :')
+
+# Inventory Simulation code
+
+```{r, eval=FALSE}
+
+invSim <- function(csl=0.9, R=3, L=2,
+                   fcst.model=c("ETS-MSE", "ETS-MAE", "ETS-SHR", "ARIMA")) {
+  
+  # Generate AR(1) time series with alpha=0.7, e~N(0,1)
+  y <- sim.ssarima(orders = list(ar=1,i=0,ma=0), obs = 500, AR = 0.7)
+  y <- 100 + window(y$data, start = 201) # burn-in period=200
+  y <- ts(y, start = 1) # 300 observations
+  
+  # Make sure that we dont have negative numbers
+  while (sum(y < 0) != 0) {
+    y <- sim.ssarima(orders = list(ar=1,i=0,ma=0), obs = 500, AR = 0.7)
+    y <- 100 + window(y$data, start = 201)
+    y <- ts(y, start = 1)
+  }
+  
+  # Set up CSL, Review period, and Lead time, and what forecasting model we use
+  csl <- csl
+  R <- R
+  L <- L
+  fcst.model <- fcst.model
+  
+  # Set up the training and the test set
+  # I do not employ any origin because we iterate it for 500 repetitions
+  # Out of 300 obs, we use 50 as training set
+  # 250 obs as test set
+  yTrain <- window(y, end = 50)
+  yTest <- window(y, start = 51)
+  
+  # H = 5, because R = 3 and L = 2
+  # Produce 1-5 step ahead forecasts
+  H <- R + L
+  n <- length(yTest)
+  
+  # Choose the forecasting model
+  # Produce forecasts on the mean and the quantile
+  if (fcst.model == "ETS-MSE") {
+    fit <- adam(yTrain, loss = "MSE")
+    fcst <- forecast(fit, h = H, interval = "empirical", level = csl)
+  } else if (fcst.model == "ARIMA") {
+    fit <- msarima(yTrain)
+    fcst <- forecast(fit, h = H, interval = "empirical", level = csl)
+  } else if (fcst.model == "ETS-SHR") {
+    fit0 <- adam(yTrain, loss = "MSE")
+    if (nchar(fit0$model)==8) {
+      modelStruc <- substr(fit0$model, 5, 7)
+    } else if (nchar(fit0$model)==9) {
+      modelStruc <- substr(fit0$model, 5, 8)
+    }
+    fit <- adam(yTrain, model = modelStruc, loss = "RIDGE", lambda = 0.2)
+    fcst <- forecast(fit, h = H, interval = "empirical", level = csl)
+  } else if (fcst.model == "ETS-MAE") {
+    fit <- adam(yTrain, loss = "MAE")
+    fcst <- forecast(fit, h = H, interval = "empirical", level = csl)
+  } else if (is.null(fcst.model)) {
+    fit <- adam(yTrain, loss = "MSE")
+    fcst <- forecast(fit, h = H, interval = "empirical", level = csl)
+  }
+  
+  # Measure forecast accuracy
+  scaled <- mean(abs(diff(yTrain)))
+  accMatrix <- matrix(c(abs(ME(yTest[1:H], fcst$mean, na.rm = TRUE)),
+                        sqrt(MSE(yTest[1:H], fcst$mean, na.rm = TRUE)),
+                        pinball(yTest[1:H], fcst$upper, level = 0.95, na.rm = TRUE),
+                        abs(sCE(yTest[1:5], fcst$mean, scaled))),
+                      ncol = 4, nrow = 1,
+                      dimnames = list(fcst.model, c("AME", "RMSE", "PinballUp", "|sCE|")))
+  
+  # Inventory simulation!
+  simDat <- array(NA,c(n,7))
+  colnames(simDat) <- c("R","Demand","S","InvPos","NetStock","StockOnHnd","Orders")
+  
+  initInv <- sum(fcst$upper[1:(H-1)]) # followed your line
+  simDat[1,] <- c(0, yTest[1], initInv, initInv, initInv, initInv, 0)
+  
+  # Set up review periods
+  r <- rep(0,R)
+  r[1] <- 1
+  simDat[2:n,1] <- rep(r,ceiling((n-1)/R))[1:(n-1)]
+  
+  ### CAUTION!!!!! NEED ATTENTION!!!!
+  # Set up the safety stock level the same as sum(fcst$upper) across the test set
+  # Is it ok? I am not sure it's a good approach. How should we incorporate rolling origins?
+  # How often does a company change their safety stock? Every review period?
+  S <- sum(fcst$upper)
+  simDat[2:n,"S"] <- S
+  
+  for (i in 2:n){
+    
+    # Store demand for this period
+    simDat[i,"Demand"] <- yTest[i]
+    
+    if (simDat[i,"R"] == 1){ # Is it a review period?
+      
+      # Set inventory position to S - demand
+      simDat[i,"InvPos"] <- simDat[i,"S"] - simDat[i,"Demand"]
+      # See if orders exist and retrieve them
+      if (i-1 >= L){
+        ordersTemp <- simDat[i-L,"Orders"]  
+      } else {
+        ordersTemp <- 0
+      }
+      # Calculate new net stock
+      simDat[i,"NetStock"] <- simDat[i-1,"NetStock"] - simDat[i,"Demand"] + ordersTemp
+      # Calculate stock on hand, no backorders
+      if (simDat[i,"NetStock"] < 0){
+        simDat[i,"StockOnHnd"] <- 0  
+      } else {
+        simDat[i,"StockOnHnd"] <- simDat[i,"NetStock"]
+      }
+      # Calculate new orders (remenber to add demand to inv position)
+      ordersTemp <- simDat[i,"S"] - simDat[i,"StockOnHnd"]
+      if (ordersTemp < 0){ordersTemp <- 0}
+      simDat[i,"Orders"] <- ordersTemp
+      
+    } else { # Not in a review period
+      
+      # Set inventory position to S
+      simDat[i,"InvPos"] <- simDat[i-1,"InvPos"] - simDat[i,"Demand"]
+      # See if orders exist and retrieve them
+      if (i-1 >= L){
+        ordersTemp <- simDat[i-L,"Orders"]  
+      } else {
+        ordersTemp <- 0
+      }
+      # Calculate new net stock
+      simDat[i,"NetStock"] <- simDat[i-1,"NetStock"] - simDat[i,"Demand"] + ordersTemp
+      # Calculate stock on hand
+      if (simDat[i,"NetStock"] < 0){
+        simDat[i,"StockOnHnd"] <- 0  
+      } else {
+        simDat[i,"StockOnHnd"] <- simDat[i,5]
+      }
+      # Calculate new orders
+      simDat[i,"Orders"] <- 0
+      
+    }
+  }
+  
+  k <- simDat[51:250,"StockOnHnd"] == 0
+  kPad <- c(k,rep(0,(R*ceiling(length(k)/R) - length(k))))
+  kPad <- colSums(matrix(kPad,nrow=R,byrow=FALSE))
+  kPad[kPad > 0] <- 1
+  
+  result <- list(parameter = fit$B,
+                 inventory = simDat,
+                 metric = c(csl, 1 - mean(kPad), 1 - sum(simDat[51:250,"StockOnHnd"]==0)/(n-1)),
+                 accuracy = accMatrix)
+  
+  return(result)
+  
+}
+
+```
